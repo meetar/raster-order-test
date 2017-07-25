@@ -1,0 +1,149 @@
+import:
+    - https://mapzen-assets.s3.amazonaws.com/resources/demo.yaml
+
+sources:
+    mapzen:
+        type: TopoJSON
+        url: https://tile.mapzen.com/mapzen/vector/v1/all/{z}/{x}/{y}.topojson
+        url_params:
+            api_key: global.sdk_mapzen_api_key
+            # api_key: mapzen-UJDfMvY
+    nyc_1921:
+        type: Raster
+        url: https://maps1.nyc.gov/xyz/1.0.0/photo/1924/{z}/{x}/{y}.png8
+        # years: 2016, 2014, 2012, 2010, 2008, 2004, 2001-2, 1996, 1951, 1924
+
+    nyc_1951:
+        type: Raster
+        url: https://maps1.nyc.gov/xyz/1.0.0/photo/1951/{z}/{x}/{y}.png8
+
+#     nyc_1996:
+#         type: Raster
+#         url: https://maps1.nyc.gov/xyz/1.0.0/photo/1996/{z}/{x}/{y}.png8
+        
+#     nyc_2001-2:
+#         type: Raster
+#         url: https://maps1.nyc.gov/xyz/1.0.0/photo/2001-2/{z}/{x}/{y}.png8
+
+#     nyc_2004:
+#         type: Raster
+#         url: https://maps1.nyc.gov/xyz/1.0.0/photo/2004/{z}/{x}/{y}.png8
+
+#     nyc_2008:
+#         type: Raster
+#         url: https://maps1.nyc.gov/xyz/1.0.0/photo/2008/{z}/{x}/{y}.png8
+
+    nyc_2016:
+        type: Raster
+        url: https://maps1.nyc.gov/xyz/1.0.0/photo/2016/{z}/{x}/{y}.png8
+
+styles:
+    _lines:
+        base: lines
+        blend: overlay
+    _polygons:
+        base: polygons
+        blend: overlay
+    fade_1951:
+        base: raster
+        blend: overlay
+        shaders:
+            uniforms:
+                u_zoomstart: 15
+                u_fade_distance: .2
+            blocks:
+                filter: |
+                    float a = 1./u_fade_distance;
+                    float d = clamp(u_map_position.z - u_zoomstart, 0., 1./a)*a;
+                    color.rgba = vec4(color.rgb, d);
+    fade_1921:
+        base: raster
+        mix: fade_1951
+        shaders:
+            uniforms:
+                u_zoomstart: 17
+                
+layers:
+    nyc:
+        data: { source: nyc_1921 }
+        filter: { $zoom: {min: 16}}
+        draw:
+            fade_1951:
+                order: 0
+                
+    nyc_1951:
+        data: { source: nyc_1951 }
+        filter: { $zoom: {min: 15, max: 18}}
+        draw:
+            fade_1951:
+                order: 1
+
+    nyc_2016:
+        data: { source: nyc_2016 }
+        # filter: { $zoom: {max: 16}}
+        draw:
+            raster:
+                order: 0
+                color: [1,1,1,.2]
+                
+    roads:
+        data: { source: mapzen }
+        filter:
+            not: 
+                - kind: ferry
+                - kind: rail
+        draw:
+            text:
+                font:
+                    size: 10px
+    water:
+        filter:
+            any:
+                - kind: ocean
+                - kind: riverbank
+            all:
+                - $zoom: { min: 16} 
+
+        data: { source: mapzen }
+        draw:
+            lines:
+                color: blue
+                width: [[12,1px],[16,3px]]
+                order: 10
+    landuse:
+        data: { source: mapzen }
+        filter: {$zoom: { min: 18}}
+        draw:
+            # _polygons:
+            #     color: [0,1,0,.05]
+            #     width: [[12,3px],[16,2px]]
+            #     order: 10
+            _lines:
+                color: [0,1,0,.2]
+                width: [[12,3px],[16,2px]]
+                order: 10
+            text:
+                font:
+                    fill: white
+    buildings:
+        data: { source: mapzen }
+        filter: {$zoom: { min: 18}}
+        draw:
+            _lines:
+                color: [1,1,0,.3]
+                width: [[12,3px],[16,2px]]
+                order: 10
+            text:
+                font:
+                    fill: white
+    transit:
+        data: { source: mapzen }
+        filter: {$zoom: { min: 18}}
+        draw:
+            _lines:
+                color: [1,0,0,.15]
+                width: [[12,3px],[16,2px]]
+                order: 10
+            text:
+                font:
+                    fill: white
